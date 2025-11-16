@@ -1,37 +1,63 @@
-import 'services.dart';
+// lib/repositories.dart
+
+import 'package:isar/isar.dart';
 import 'models.dart';
-import 'utils/result.dart';
 
+// --- REPOSITORIO DE AMIGOS ---
 class FriendRepository {
-  FriendRepository({required SplitWithMeService service}) : _service = service;
-  late final SplitWithMeService _service;
+  final Isar isar;
 
+  FriendRepository(this.isar);
 
-  Future<Result<List<Friend>>> fetchFriends() async {
-    try {
-      final friends = await _service.fetchFriends();
-      return Result.ok(friends);
-    } on Exception catch (e){
-      return Result.error(e);
-    }
-  }
-  Future<Result<Friend>> addFriend(Friend friend) async {
-    
-    try {
-     final newFriend = await _service.addFriend(friend);
-     return Result.ok(newFriend);
-    } on Exception catch (e){
-      return Result.error(e);
-    }
-  }
-  Future<Result<void>> removeFriend(int id) async {
-     try {
-      await _service.removeFriend(id);
-      return Result.ok(null);
-    } on Exception catch (e){
-      return Result.error(e);
-    }
+  // Guardar/Actualizar Amigo (Para simular la creación de datos iniciales)
+  Future<void> saveFriend(Friend friend) async {
+    await isar.writeTxn(() async {
+      await isar.friends.put(friend);
+    });
   }
 
+  // Obtener todos los Amigos (UC-06)
+  Future<List<Friend>> getAllFriends() async {
+    return await isar.friends.where().findAll();
+  }
 
+  // Obtener un Amigo por ID (UC-07)
+  Future<Friend?> getFriendById(Id id) async {
+    return await isar.friends.get(id);
+  }
+}
+
+// --- REPOSITORIO DE GASTOS ---
+class ExpenseRepository {
+  final Isar isar;
+
+  ExpenseRepository(this.isar);
+
+  // Crear/Actualizar Gasto (UC-02, UC-03)
+  Future<void> saveExpense(Expense expense) async {
+    await isar.writeTxn(() async {
+      await isar.expenses.put(expense);
+      // Las relaciones (links) deben ser guardadas por separado
+      await expense.participants.save();
+    });
+  }
+
+  // Eliminar Gasto (UC-04)
+  Future<void> deleteExpense(Id isarId) async {
+    await isar.writeTxn(() async {
+      await isar.expenses.delete(isarId);
+    });
+  }
+
+  // Obtener todos los Gastos (UC-01)
+  Future<List<Expense>> getAllExpenses() async {
+    return await isar.expenses.where().findAll();
+  }
+
+  // Obtener Detalle del Gasto (UC-05)
+  Future<Expense?> getExpenseById(Id id) async {
+    // Nota: Para cargar las relaciones (participants), necesitarías un .load() 
+    // pero para simplicidad, devolvemos el objeto principal.
+    return await isar.expenses.get(id);
+  }
 }

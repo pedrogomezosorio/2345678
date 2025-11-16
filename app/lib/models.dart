@@ -1,27 +1,51 @@
+// lib/models.dart
+
+import 'package:isar/isar.dart';
+
+// El archivo que será generado automáticamente.
+part 'models.g.dart'; 
+
+// --- 1. COLECCIÓN DE AMIGOS (FRIEND) ---
+@collection
 class Friend {
+  // Isar ID (Primary Key)
+  Id isarId = Isar.autoIncrement;
 
-  Friend({this.id, required this.name, this.creditBalance, this.debitBalance});
-  final int? id;
-  final String name;
-  final double? creditBalance;
-  final double? debitBalance;
-  bool starred = false;
+  // Campos de Friend
+  final String name; 
+  final double totalCreditBalance; 
+  final double totalDebitBalance;  
 
-  
-  Friend.fromJson(Map json) 
-  : id = json["id"],
-  name = json["name"],
-  creditBalance = json["credit_balance"],
-  debitBalance = json["debit_balance"];
-
-  @override
-  String toString() {
-    return "$id | $name | $creditBalance | $debitBalance | $starred";
-  }
-
+  // Constructor
+  Friend({
+    required this.name, 
+    this.totalCreditBalance = 0.0, 
+    this.totalDebitBalance = 0.0,
+  });
 }
 
-class ServerException implements Exception {
-  String errorMessage;
-  ServerException(this.errorMessage);
+// --- 2. COLECCIÓN DE GASTOS (EXPENSE) ---
+@collection
+class Expense {
+  // Isar ID (Primary Key)
+  Id isarId = Isar.autoIncrement;
+
+  // Campos de Expense (UC-01)
+  final String description; 
+  final DateTime date;      
+  final double amount;      
+  final int numFriends;     
+  final double totalCreditBalance; 
+  
+  // RELACIÓN: Amigos que participan en este gasto
+  final participants = IsarLinks<Friend>(); 
+
+  // Constructor
+  Expense({
+    required this.description,
+    required this.date,
+    required this.amount,
+    this.numFriends = 0,
+    this.totalCreditBalance = 0.0,
+  });
 }
