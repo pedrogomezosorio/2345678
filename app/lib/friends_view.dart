@@ -2,21 +2,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:isar/isar.dart'; // Importar el tipo Id
 import 'models.dart';
 import 'repositories.dart';
-import 'friend_details_view.dart'; // ¡NUEVO! Importar vista detalle
-import 'friend_form_dialog.dart'; // ¡NUEVO! Importar diálogo
+import 'friend_details_view.dart'; 
+import 'friend_form_dialog.dart'; 
+import 'main.dart'; 
 
 class FriendsView extends StatefulWidget {
-  // ¡ACTUALIZADO! Se requiere una Key para el REFRESH
   const FriendsView({super.key});
 
   @override
-  // ¡ACTUALIZADO! Nombre de la clase de estado es ahora público
   State<FriendsView> createState() => FriendsViewState();
 }
 
-// ¡ACTUALIZADO! La clase de estado ahora es pública 'FriendsViewState'
 class FriendsViewState extends State<FriendsView> {
   List<Friend> _friendsList = [];
   bool _isLoading = true;
@@ -24,10 +23,9 @@ class FriendsViewState extends State<FriendsView> {
   @override
   void initState() {
     super.initState();
-    loadFriends(); // Renombrado de _loadFriends
+    loadFriends(); 
   }
 
-  // ¡ACTUALIZADO! Método ahora público para ser llamado por el REFRESH
   Future<void> loadFriends() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -50,18 +48,29 @@ class FriendsViewState extends State<FriendsView> {
     setState(() => _isLoading = false);
   }
 
-  // ¡NUEVO! Método para mostrar el diálogo de añadir amigo
   void _showAddFriendDialog() async {
-    // Muestra el diálogo y espera un resultado
     final bool? didAddFriend = await showDialog(
       context: context,
       builder: (context) => const FriendFormDialog(),
     );
     
-    // Si el diálogo devolvió 'true', recargamos la lista
     if (didAddFriend == true) {
       loadFriends();
+      MainTabView.expensesKey.currentState?.loadExpenses();
     }
+  }
+
+  Future<void> _deleteFriend(Id friendId) async {
+    if (!mounted) return;
+    final repo = Provider.of<FriendRepository>(context, listen: false);
+    
+    await repo.deleteFriend(friendId);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Amigo eliminado')),
+    );
+    
+    MainTabView.expensesKey.currentState?.loadExpenses();
   }
 
   @override
@@ -71,15 +80,14 @@ class FriendsViewState extends State<FriendsView> {
     }
     
     return Scaffold(
-      // ¡ACTUALIZADO! Botón "+" ahora llama al diálogo
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddFriendDialog, // Llama al nuevo método
+        onPressed: _showAddFriendDialog, 
         mini: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         child: const Icon(Icons.add), 
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      // ¡LÍNEA ELIMINADA! Ya no está 'floatingActionButtonLocation: FloatingActionButtonLocation.endTop'
       
       body: _friendsList.isEmpty
           ? const Center(child: Text('No hay amigos (A1: Sin datos)'))
@@ -89,31 +97,50 @@ class FriendsViewState extends State<FriendsView> {
               itemBuilder: (context, index) {
                 final friend = _friendsList[index];
                 final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 18.0),
+                
+                return Dismissible(
+                  key: Key(friend.isarId.toString()), 
+                  direction: DismissDirection.endToStart, 
+                  
+                  onDismissed: (direction) {
+                    _deleteFriend(friend.isarId); // Llama al borrado
+                    
+                    setState(() {
+                      _friendsList.removeAt(index);
+                    });
+                  },
+
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 18.0),
+                          ),
                         ),
-                      ),
-                      
-                      // ¡ACTUALIZADO! Botón "SHOW ALL" (UC-07)
-                      OutlinedButton(
-                        onPressed: () {
-                          // ¡NUEVA LÓGICA! Navegar a la vista de detalle
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => FriendDetailsView(friend: friend),
-                            ),
-                          );
-                        },
-                        child: const Text('SHOW ALL'),
-                      ),
-                    ],
+                        
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FriendDetailsView(friend: friend),
+                              ),
+                            );
+                          },
+                          child: const Text('SHOW ALL'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

@@ -21,6 +21,7 @@ void main() async {
     directory: dir.path,
   );
 
+
   runApp(
     MultiProvider(
       providers: [
@@ -61,7 +62,7 @@ class SplitWithMeApp extends StatelessWidget {
 class MainTabView extends StatelessWidget {
   const MainTabView({super.key});
 
-  // ¡ACTUALIZADO! Keys ahora públicas (sin guion bajo)
+  // Keys públicas para el refresco
   static final friendsKey = GlobalKey<FriendsViewState>();
   static final expensesKey = GlobalKey<ExpensesViewState>();
 
@@ -81,7 +82,6 @@ class MainTabView extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // ¡ACTUALIZADO! Usando las keys públicas
             FriendsView(key: friendsKey),
             ExpensesView(key: expensesKey),
           ],
@@ -91,7 +91,6 @@ class MainTabView extends StatelessWidget {
             alignment: Alignment.bottomRight,
             child: TextButton(
               onPressed: () {
-                // ¡ACTUALIZADO! Usando las keys públicas
                 friendsKey.currentState?.loadFriends();
                 expensesKey.currentState?.loadExpenses();
 
