@@ -13,8 +13,8 @@ class Friend {
 
   // Campos de Friend
   final String name; 
-  final double totalCreditBalance; 
-  final double totalDebitBalance;  
+  double totalCreditBalance; // CAMBIADO: De 'final' a 'mutable' para poder actualizarlo
+  double totalDebitBalance;  // CAMBIADO: De 'final' a 'mutable' para poder actualizarlo
 
   // Constructor
   Friend({
@@ -34,9 +34,10 @@ class Expense {
   final String description; 
   final DateTime date;      
   final double amount;      
-  final int numFriends;     
-  final double totalCreditBalance; 
   
+  // RELACIÓN: Quién pagó este gasto
+  final payer = IsarLink<Friend>(); // ¡NUEVO!
+
   // RELACIÓN: Amigos que participan en este gasto
   final participants = IsarLinks<Friend>(); 
 
@@ -45,7 +46,13 @@ class Expense {
     required this.description,
     required this.date,
     required this.amount,
-    this.numFriends = 0,
-    this.totalCreditBalance = 0.0,
   });
+
+  // --- CAMPOS OBSOLETOS ---
+  // Estos campos estaban en tu modelo original, pero son redundantes o
+  // deberían estar en el 'Friend' (como el balance). Los mantenemos
+  // comentados por si los usas en otro sitio, pero la nueva lógica no los usa.
+  
+  // final int numFriends;     
+  // final double totalCreditBalance; 
 }

@@ -4,39 +4,41 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'repositories.dart';
+import 'friend_details_view.dart'; // ¡NUEVO! Importar vista detalle
+import 'friend_form_dialog.dart'; // ¡NUEVO! Importar diálogo
 
 class FriendsView extends StatefulWidget {
+  // ¡ACTUALIZADO! Se requiere una Key para el REFRESH
   const FriendsView({super.key});
 
   @override
-  State<FriendsView> createState() => _FriendsViewState();
+  // ¡ACTUALIZADO! Nombre de la clase de estado es ahora público
+  State<FriendsView> createState() => FriendsViewState();
 }
 
-class _FriendsViewState extends State<FriendsView> {
+// ¡ACTUALIZADO! La clase de estado ahora es pública 'FriendsViewState'
+class FriendsViewState extends State<FriendsView> {
   List<Friend> _friendsList = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadFriends();
+    loadFriends(); // Renombrado de _loadFriends
   }
 
-  Future<void> _loadFriends() async {
+  // ¡ACTUALIZADO! Método ahora público para ser llamado por el REFRESH
+  Future<void> loadFriends() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     final repo = Provider.of<FriendRepository>(context, listen: false);
     
     _friendsList = await repo.getAllFriends();
 
-    // Insertar datos de ejemplo si está vacío (Page 6)
     if (_friendsList.isEmpty) {
       final initialFriends = [
         Friend(name: 'Friend 1'),
         Friend(name: 'Friend 2'),
-        Friend(name: 'Friend 3'),
-        Friend(name: 'Friend 4'),
-        Friend(name: 'Friend 5'),
       ];
       for (var friend in initialFriends) {
         await repo.saveFriend(friend);
@@ -48,23 +50,30 @@ class _FriendsViewState extends State<FriendsView> {
     setState(() => _isLoading = false);
   }
 
+  // ¡NUEVO! Método para mostrar el diálogo de añadir amigo
+  void _showAddFriendDialog() async {
+    // Muestra el diálogo y espera un resultado
+    final bool? didAddFriend = await showDialog(
+      context: context,
+      builder: (context) => const FriendFormDialog(),
+    );
+    
+    // Si el diálogo devolvió 'true', recargamos la lista
+    if (didAddFriend == true) {
+      loadFriends();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator()); 
     }
-    if (_friendsList.isEmpty) {
-      return const Center(child: Text('No hay amigos (A1: Sin datos)')); 
-    }
-
+    
     return Scaffold(
+      // ¡ACTUALIZADO! Botón "+" ahora llama al diálogo
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Fuera de alcance: Añadir amigo
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Añadir amigo (Fuera de alcance)')),
-          );
-        },
+        onPressed: _showAddFriendDialog, // Llama al nuevo método
         mini: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -72,37 +81,43 @@ class _FriendsViewState extends State<FriendsView> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
       
-      body: ListView.builder(
-        padding: const EdgeInsets.only(top: 8.0),
-        itemCount: _friendsList.length,
-        itemBuilder: (context, index) {
-          final friend = _friendsList[index];
-          final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 18.0),
+      body: _friendsList.isEmpty
+          ? const Center(child: Text('No hay amigos (A1: Sin datos)'))
+          : ListView.builder(
+              padding: const EdgeInsets.only(top: 8.0),
+              itemCount: _friendsList.length,
+              itemBuilder: (context, index) {
+                final friend = _friendsList[index];
+                final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 18.0),
+                        ),
+                      ),
+                      
+                      // ¡ACTUALIZADO! Botón "SHOW ALL" (UC-07)
+                      OutlinedButton(
+                        onPressed: () {
+                          // ¡NUEVA LÓGICA! Navegar a la vista de detalle
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FriendDetailsView(friend: friend),
+                            ),
+                          );
+                        },
+                        child: const Text('SHOW ALL'),
+                      ),
+                    ],
                   ),
-                ),
-                
-                // Botón "SHOW ALL" (UC-07)
-                OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ver detalle de ${friend.name} (UC-07)')),
-                    );
-                  },
-                  child: const Text('SHOW ALL'),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }

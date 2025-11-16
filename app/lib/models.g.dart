@@ -662,16 +662,6 @@ const ExpenseSchema = CollectionSchema(
       id: 2,
       name: r'description',
       type: IsarType.string,
-    ),
-    r'numFriends': PropertySchema(
-      id: 3,
-      name: r'numFriends',
-      type: IsarType.long,
-    ),
-    r'totalCreditBalance': PropertySchema(
-      id: 4,
-      name: r'totalCreditBalance',
-      type: IsarType.double,
     )
   },
   estimateSize: _expenseEstimateSize,
@@ -681,6 +671,12 @@ const ExpenseSchema = CollectionSchema(
   idName: r'isarId',
   indexes: {},
   links: {
+    r'payer': LinkSchema(
+      id: -3988055479429684766,
+      name: r'payer',
+      target: r'Friend',
+      single: true,
+    ),
     r'participants': LinkSchema(
       id: 8745599672919639642,
       name: r'participants',
@@ -714,8 +710,6 @@ void _expenseSerialize(
   writer.writeDouble(offsets[0], object.amount);
   writer.writeDateTime(offsets[1], object.date);
   writer.writeString(offsets[2], object.description);
-  writer.writeLong(offsets[3], object.numFriends);
-  writer.writeDouble(offsets[4], object.totalCreditBalance);
 }
 
 Expense _expenseDeserialize(
@@ -728,8 +722,6 @@ Expense _expenseDeserialize(
     amount: reader.readDouble(offsets[0]),
     date: reader.readDateTime(offsets[1]),
     description: reader.readString(offsets[2]),
-    numFriends: reader.readLongOrNull(offsets[3]) ?? 0,
-    totalCreditBalance: reader.readDoubleOrNull(offsets[4]) ?? 0.0,
   );
   object.isarId = id;
   return object;
@@ -748,10 +740,6 @@ P _expenseDeserializeProp<P>(
       return (reader.readDateTime(offset)) as P;
     case 2:
       return (reader.readString(offset)) as P;
-    case 3:
-      return (reader.readLongOrNull(offset) ?? 0) as P;
-    case 4:
-      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
@@ -762,11 +750,12 @@ Id _expenseGetId(Expense object) {
 }
 
 List<IsarLinkBase<dynamic>> _expenseGetLinks(Expense object) {
-  return [object.participants];
+  return [object.payer, object.participants];
 }
 
 void _expenseAttach(IsarCollection<dynamic> col, Id id, Expense object) {
   object.isarId = id;
+  object.payer.attach(col, col.isar.collection<Friend>(), r'payer', id);
   object.participants
       .attach(col, col.isar.collection<Friend>(), r'participants', id);
 }
@@ -1147,125 +1136,6 @@ extension ExpenseQueryFilter
       ));
     });
   }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> numFriendsEqualTo(
-      int value) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'numFriends',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> numFriendsGreaterThan(
-    int value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'numFriends',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> numFriendsLessThan(
-    int value, {
-    bool include = false,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'numFriends',
-        value: value,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition> numFriendsBetween(
-    int lower,
-    int upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'numFriends',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-      totalCreditBalanceEqualTo(
-    double value, {
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'totalCreditBalance',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-      totalCreditBalanceGreaterThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        include: include,
-        property: r'totalCreditBalance',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-      totalCreditBalanceLessThan(
-    double value, {
-    bool include = false,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.lessThan(
-        include: include,
-        property: r'totalCreditBalance',
-        value: value,
-        epsilon: epsilon,
-      ));
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterFilterCondition>
-      totalCreditBalanceBetween(
-    double lower,
-    double upper, {
-    bool includeLower = true,
-    bool includeUpper = true,
-    double epsilon = Query.epsilon,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.between(
-        property: r'totalCreditBalance',
-        lower: lower,
-        includeLower: includeLower,
-        upper: upper,
-        includeUpper: includeUpper,
-        epsilon: epsilon,
-      ));
-    });
-  }
 }
 
 extension ExpenseQueryObject
@@ -1273,6 +1143,19 @@ extension ExpenseQueryObject
 
 extension ExpenseQueryLinks
     on QueryBuilder<Expense, Expense, QFilterCondition> {
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> payer(
+      FilterQuery<Friend> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.link(q, r'payer');
+    });
+  }
+
+  QueryBuilder<Expense, Expense, QAfterFilterCondition> payerIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.linkLength(r'payer', 0, true, 0, true);
+    });
+  }
+
   QueryBuilder<Expense, Expense, QAfterFilterCondition> participants(
       FilterQuery<Friend> q) {
     return QueryBuilder.apply(this, (query) {
@@ -1370,30 +1253,6 @@ extension ExpenseQuerySortBy on QueryBuilder<Expense, Expense, QSortBy> {
       return query.addSortBy(r'description', Sort.desc);
     });
   }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByNumFriends() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'numFriends', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByNumFriendsDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'numFriends', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByTotalCreditBalance() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'totalCreditBalance', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> sortByTotalCreditBalanceDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'totalCreditBalance', Sort.desc);
-    });
-  }
 }
 
 extension ExpenseQuerySortThenBy
@@ -1445,30 +1304,6 @@ extension ExpenseQuerySortThenBy
       return query.addSortBy(r'isarId', Sort.desc);
     });
   }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByNumFriends() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'numFriends', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByNumFriendsDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'numFriends', Sort.desc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByTotalCreditBalance() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'totalCreditBalance', Sort.asc);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QAfterSortBy> thenByTotalCreditBalanceDesc() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'totalCreditBalance', Sort.desc);
-    });
-  }
 }
 
 extension ExpenseQueryWhereDistinct
@@ -1489,18 +1324,6 @@ extension ExpenseQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'description', caseSensitive: caseSensitive);
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QDistinct> distinctByNumFriends() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'numFriends');
-    });
-  }
-
-  QueryBuilder<Expense, Expense, QDistinct> distinctByTotalCreditBalance() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'totalCreditBalance');
     });
   }
 }
@@ -1528,18 +1351,6 @@ extension ExpenseQueryProperty
   QueryBuilder<Expense, String, QQueryOperations> descriptionProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'description');
-    });
-  }
-
-  QueryBuilder<Expense, int, QQueryOperations> numFriendsProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'numFriends');
-    });
-  }
-
-  QueryBuilder<Expense, double, QQueryOperations> totalCreditBalanceProperty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'totalCreditBalance');
     });
   }
 }

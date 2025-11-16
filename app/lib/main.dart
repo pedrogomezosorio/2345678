@@ -8,33 +8,25 @@ import 'models.dart';
 import 'repositories.dart';
 import 'friends_view.dart';
 import 'expenses_view.dart';
-// Asegúrate de que los archivos 'friends_viewmodel.dart', 'services.dart', y 'utils/' existen.
 
 late Isar isarDB;
 
 void main() async {
-  // Asegura que los widgets estén inicializados antes de abrir Isar
   WidgetsFlutterBinding.ensureInitialized(); 
 
-  // 1. Obtiene la ruta donde se almacenará la DB local
   final dir = await getApplicationSupportDirectory();
   
-  // 2. Abre la instancia de Isar (FriendSchema y ExpenseSchema son generados)
   isarDB = await Isar.open(
     [FriendSchema, ExpenseSchema], 
     directory: dir.path,
-    // inspector: true, // Útil para depuración si lo tienes instalado
   );
 
   runApp(
     MultiProvider(
       providers: [
-        // Proporciona la instancia de Isar
         Provider<Isar>(create: (_) => isarDB), 
-        // Proporciona los repositorios que necesitan la instancia de Isar
         Provider<FriendRepository>(create: (context) => FriendRepository(Isar.getInstance()!)),
         Provider<ExpenseRepository>(create: (context) => ExpenseRepository(Isar.getInstance()!)),
-        // Puedes agregar aquí los ViewModels si usan Provider
       ],
       child: const SplitWithMeApp(),
     ),
@@ -69,9 +61,12 @@ class SplitWithMeApp extends StatelessWidget {
 class MainTabView extends StatelessWidget {
   const MainTabView({super.key});
 
+  // ¡ACTUALIZADO! Keys ahora públicas (sin guion bajo)
+  static final friendsKey = GlobalKey<FriendsViewState>();
+  static final expensesKey = GlobalKey<ExpensesViewState>();
+
   @override
   Widget build(BuildContext context) {
-    // Page 5 - Interfaz principal con dos secciones FRIENDS / EXPENSES
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -84,19 +79,22 @@ class MainTabView extends StatelessWidget {
             ],
           ),
         ),
-        body: const TabBarView(
+        body: TabBarView(
           children: [
-            FriendsView(),
-            ExpensesView(),
+            // ¡ACTUALIZADO! Usando las keys públicas
+            FriendsView(key: friendsKey),
+            ExpensesView(key: expensesKey),
           ],
         ),
-        // Botón global de REFRESH (Page 6/8)
         persistentFooterButtons: [
           Align(
             alignment: Alignment.bottomRight,
             child: TextButton(
               onPressed: () {
-                // Lógica para actualizar las vistas (ej. llamar a los ViewModels)
+                // ¡ACTUALIZADO! Usando las keys públicas
+                friendsKey.currentState?.loadFriends();
+                expensesKey.currentState?.loadExpenses();
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Refrescando datos...')),
                 );

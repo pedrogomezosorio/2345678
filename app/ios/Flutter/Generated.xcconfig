@@ -1,8 +1,8 @@
 // This is a generated file; do not edit or check into version control.
 FLUTTER_ROOT=/Users/mac1/Developer/flutter
-FLUTTER_APPLICATION_PATH=/Users/mac1/Desktop/FIC/practica-de-mobiles-guns-n-roses/app
+FLUTTER_APPLICATION_PATH=/Users/mac1/Desktop/FIC/2345678/app
 COCOAPODS_PARALLEL_CODE_SIGN=true
-FLUTTER_TARGET=/Users/mac1/Desktop/FIC/practica-de-mobiles-guns-n-roses/app/lib/main.dart
+FLUTTER_TARGET=/Users/mac1/Desktop/FIC/2345678/app/lib/main.dart
 FLUTTER_BUILD_DIR=build
 FLUTTER_BUILD_NAME=1.0.0
 FLUTTER_BUILD_NUMBER=1
@@ -12,4 +12,4 @@ DART_DEFINES=RkxVVFRFUl9WRVJTSU9OPTMuMzUuNw==,RkxVVFRFUl9DSEFOTkVMPXN0YWJsZQ==,R
 DART_OBFUSCATION=false
 TRACK_WIDGET_CREATION=true
 TREE_SHAKE_ICONS=false
-PACKAGE_CONFIG=/Users/mac1/Desktop/FIC/practica-de-mobiles-guns-n-roses/app/.dart_tool/package_config.json
+PACKAGE_CONFIG=/Users/mac1/Desktop/FIC/2345678/app/.dart_tool/package_config.json

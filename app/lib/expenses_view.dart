@@ -1,19 +1,24 @@
 // lib/expenses_view.dart
 
+import 'main.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'repositories.dart';
-import 'expense_form_view.dart'; // Importado para navegación
+import 'expense_form_view.dart';
+import 'expense_details_view.dart'; // ¡NUEVO! Importar vista detalle
 
 class ExpensesView extends StatefulWidget {
+  // ¡ACTUALIZADO! Se requiere una Key para el REFRESH
   const ExpensesView({super.key});
 
   @override
-  State<ExpensesView> createState() => _ExpensesViewState();
+  // ¡ACTUALIZADO! Nombre de la clase de estado es ahora público
+  State<ExpensesView> createState() => ExpensesViewState();
 }
 
-class _ExpensesViewState extends State<ExpensesView> {
+// ¡ACTUALIZADO! La clase de estado ahora es pública 'ExpensesViewState'
+class ExpensesViewState extends State<ExpensesView> {
   List<Expense> _expensesList = [];
   bool _isLoading = true;
 
@@ -21,36 +26,40 @@ class _ExpensesViewState extends State<ExpensesView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadExpenses();
+      loadExpenses(); // Renombrado de _loadExpenses
     });
   }
 
-  Future<void> _loadExpenses() async {
+  // ¡ACTUALIZADO! Método ahora público para ser llamado por el REFRESH
+  Future<void> loadExpenses() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final repo = Provider.of<ExpenseRepository>(context, listen: false);
     
+    final repo = Provider.of<ExpenseRepository>(context, listen: false);
     _expensesList = await repo.getAllExpenses();
 
-    // Podemos añadir un gasto de ejemplo si la DB está vacía
+    // Lógica para añadir un gasto de ejemplo si está vacío
     if (_expensesList.isEmpty) {
-        // Asumiendo que FriendRepository ha inicializado a los amigos
         final friendRepo = Provider.of<FriendRepository>(context, listen: false);
         final allFriends = await friendRepo.getAllFriends();
 
-        if (allFriends.isNotEmpty) {
+        if (allFriends.length >= 2) { // Necesitamos al menos 2 amigos para el ejemplo
             final exampleExpense = Expense(
-              description: 'EXPENSE 1', 
+              description: 'Gasto de Ejemplo', 
               date: DateTime.now(), 
               amount: 50.00,
-              numFriends: 2,
-              totalCreditBalance: 50.00 // Asumimos que uno pagó todo
             );
-            exampleExpense.participants.add(allFriends.first);
-            await repo.saveExpense(exampleExpense);
+            // El primer amigo paga
+            exampleExpense.payer.value = allFriends[0];
+            // Pagan los dos primeros amigos
+            exampleExpense.participants.addAll([allFriends[0], allFriends[1]]);
+            
+            await repo.saveExpense(exampleExpense); // saveExpense AHORA actualiza balances
             _expensesList = await repo.getAllExpenses();
         }
     }
-
+    
+    if (!mounted) return;
     setState(() => _isLoading = false);
   }
 
@@ -59,19 +68,23 @@ class _ExpensesViewState extends State<ExpensesView> {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (_expensesList.isEmpty) {
-      return const Center(child: Text('No hay gastos (A1: Sin datos)')); // A1 Alternativa (UC-01)
-    }
-    
+   
     return Scaffold(
-      // Botón "+" para Crear Gasto (UC-02) (Page 8)
+      // Botón "+" para Crear Gasto (UC-02)
       floatingActionButton: FloatingActionButton(
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ExpenseFormView(isEditing: false),
           ),
-        ).then((_) => _loadExpenses()), // Recargar la lista al volver
+        ).then((didSave) {
+          // ¡ACTUALIZADO! Si el formulario guardó, recargamos los gastos
+          if (didSave == true) {
+            loadExpenses();
+            // Le decimos a la vista de amigos que también recargue (para balances)
+            MainTabView.friendsKey.currentState?.loadFriends();
+          }
+        }), 
         mini: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
@@ -79,36 +92,42 @@ class _ExpensesViewState extends State<ExpensesView> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
       
-      body: ListView.builder(
-        padding: const EdgeInsets.only(top: 8.0),
-        itemCount: _expensesList.length,
-        itemBuilder: (context, index) {
-          final expense = _expensesList[index];
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    '${expense.description} - \$${expense.amount.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 18.0),
+      body: _expensesList.isEmpty
+          ? const Center(child: Text('No hay gastos (A1: Sin datos)'))
+          : ListView.builder(
+              padding: const EdgeInsets.only(top: 8.0),
+              itemCount: _expensesList.length,
+              itemBuilder: (context, index) {
+                final expense = _expensesList[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '${expense.description} - \$${expense.amount.toStringAsFixed(2)}',
+                          style: const TextStyle(fontSize: 18.0),
+                        ),
+                      ),
+                      
+                      // ¡ACTUALIZADO! Botón "SHOW ALL" (UC-05)
+                      OutlinedButton(
+                        onPressed: () {
+                          // ¡NUEVA LÓGICA! Navegar a la vista de detalle
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ExpenseDetailsView(expense: expense),
+                            ),
+                          );
+                        },
+                        child: const Text('SHOW ALL'),
+                      ),
+                    ],
                   ),
-                ),
-                
-                // Botón "SHOW ALL" (UC-05 - Ver detalle de un gasto)
-                OutlinedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Ver detalle de ${expense.description} (UC-05)')),
-                    );
-                  },
-                  child: const Text('SHOW ALL'),
-                ),
-              ],
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
