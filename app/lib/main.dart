@@ -8,6 +8,7 @@ import 'models.dart';
 import 'repositories.dart';
 import 'friends_view.dart';
 import 'expenses_view.dart';
+import 'settle_debt_dialog.dart'; // ¡NUEVO! Importar el diálogo
 
 late Isar isarDB;
 
@@ -21,6 +22,12 @@ void main() async {
     directory: dir.path,
   );
 
+  // --- CÓDIGO DE LIMPIEZA ---
+  // Déjalo comentado a menos que los datos vuelvan a corromperse
+  // await isarDB.writeTxn(() async {
+  //   await isarDB.clear(); 
+  // });
+  // -------------------------
 
   runApp(
     MultiProvider(
@@ -62,9 +69,23 @@ class SplitWithMeApp extends StatelessWidget {
 class MainTabView extends StatelessWidget {
   const MainTabView({super.key});
 
-  // Keys públicas para el refresco
   static final friendsKey = GlobalKey<FriendsViewState>();
   static final expensesKey = GlobalKey<ExpensesViewState>();
+
+  // ¡NUEVO! Método para mostrar el diálogo de liquidación
+  void _showSettleDebtDialog(BuildContext context) async {
+    // showDialog necesita el 'context' de MainTabView
+    final bool? didSettle = await showDialog(
+      context: context,
+      builder: (_) => const SettleDebtDialog(),
+    );
+
+    // Si el diálogo liquidó una deuda (devolvió true), refrescamos ambas vistas
+    if (didSettle == true) {
+      friendsKey.currentState?.loadFriends();
+      expensesKey.currentState?.loadExpenses(); // Los gastos no cambian, pero es buena práctica
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,20 +107,29 @@ class MainTabView extends StatelessWidget {
             ExpensesView(key: expensesKey),
           ],
         ),
+        // ¡ACTUALIZADO! Barra inferior con dos botones
         persistentFooterButtons: [
-          Align(
-            alignment: Alignment.bottomRight,
-            child: TextButton(
-              onPressed: () {
-                friendsKey.currentState?.loadFriends();
-                expensesKey.currentState?.loadExpenses();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Refrescando datos...')),
-                );
-              },
-              child: const Text('REFRESH'),
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // --- Botón Liquidar Deuda ---
+              TextButton(
+                onPressed: () => _showSettleDebtDialog(context),
+                child: const Text('LIQUIDAR DEUDA'),
+              ),
+              const SizedBox(width: 8),
+              // --- Botón Refresh ---
+              TextButton(
+                onPressed: () {
+                  friendsKey.currentState?.loadFriends();
+                  expensesKey.currentState?.loadExpenses();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Refrescando datos...')),
+                  );
+                },
+                child: const Text('REFRESH'),
+              ),
+            ],
           ),
         ],
       ),
