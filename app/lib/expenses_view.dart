@@ -1,23 +1,24 @@
 // lib/expenses_view.dart
 
-import 'main.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'repositories.dart';
 import 'expense_form_view.dart';
-import 'expense_details_view.dart'; // ¡NUEVO! Importar vista detalle
+import 'expense_details_view.dart'; // Importar vista detalle
+import 'main.dart';                 // Importar para la GlobalKey
+import 'friends_view.dart';           // Importar para el tipo de la GlobalKey
 
 class ExpensesView extends StatefulWidget {
-  // ¡ACTUALIZADO! Se requiere una Key para el REFRESH
+  // Se requiere una Key para que el botón REFRESH global funcione
   const ExpensesView({super.key});
 
   @override
-  // ¡ACTUALIZADO! Nombre de la clase de estado es ahora público
+  // El nombre de la clase de estado ahora es público
   State<ExpensesView> createState() => ExpensesViewState();
 }
 
-// ¡ACTUALIZADO! La clase de estado ahora es pública 'ExpensesViewState'
+// La clase de estado ahora es pública 'ExpensesViewState'
 class ExpensesViewState extends State<ExpensesView> {
   List<Expense> _expensesList = [];
   bool _isLoading = true;
@@ -30,7 +31,7 @@ class ExpensesViewState extends State<ExpensesView> {
     });
   }
 
-  // ¡ACTUALIZADO! Método ahora público para ser llamado por el REFRESH
+  // Método ahora público para ser llamado por el REFRESH global
   Future<void> loadExpenses() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
@@ -39,6 +40,7 @@ class ExpensesViewState extends State<ExpensesView> {
     _expensesList = await repo.getAllExpenses();
 
     // Lógica para añadir un gasto de ejemplo si está vacío
+    // ¡ACTUALIZADA para usar la nueva lógica de 'payer' y 'balances'!
     if (_expensesList.isEmpty) {
         final friendRepo = Provider.of<FriendRepository>(context, listen: false);
         final allFriends = await friendRepo.getAllFriends();
@@ -51,10 +53,11 @@ class ExpensesViewState extends State<ExpensesView> {
             );
             // El primer amigo paga
             exampleExpense.payer.value = allFriends[0];
-            // Pagan los dos primeros amigos
+            // Participan los dos primeros amigos
             exampleExpense.participants.addAll([allFriends[0], allFriends[1]]);
             
-            await repo.saveExpense(exampleExpense); // saveExpense AHORA actualiza balances
+            // saveExpense AHORA actualiza los balances automáticamente
+            await repo.saveExpense(exampleExpense); 
             _expensesList = await repo.getAllExpenses();
         }
     }
@@ -78,10 +81,11 @@ class ExpensesViewState extends State<ExpensesView> {
             builder: (context) => ExpenseFormView(isEditing: false),
           ),
         ).then((didSave) {
-          // ¡ACTUALIZADO! Si el formulario guardó, recargamos los gastos
+          // ¡ACTUALIZADO! Si el formulario guardó (devolvió true)...
           if (didSave == true) {
+            // Recargamos los gastos (esta vista)
             loadExpenses();
-            // Le decimos a la vista de amigos que también recargue (para balances)
+            // ¡Y recargamos los amigos (para ver el balance actualizado)!
             MainTabView.friendsKey.currentState?.loadFriends();
           }
         }), 

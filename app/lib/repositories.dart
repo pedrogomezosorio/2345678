@@ -33,8 +33,7 @@ class ExpenseRepository {
 
   ExpenseRepository(this.isar);
 
-  // Crear/Actualizar Gasto (UC-02, UC-03)
-  // ¡ACTUALIZADO! Esta es la lógica de negocio clave que faltaba.
+  // ¡ESTA ES LA LÓGICA DE NEGOCIO QUE IMPLEMENTA LOS BALANCES! (UC-02, UC-03)
   Future<void> saveExpense(Expense expense) async {
     await isar.writeTxn(() async {
       // 1. Guardar el gasto
@@ -57,10 +56,12 @@ class ExpenseRepository {
       if (payer != null && participants.isNotEmpty) {
         
         // 3b. Sumar crédito al pagador
+        // (Incrementamos lo que ha pagado)
         payer.totalCreditBalance += expense.amount;
         await isar.friends.put(payer); // Guardar amigo pagador actualizado
 
         // 3c. Sumar débito a cada participante
+        // (Incrementamos lo que deben)
         final double debitPerParticipant = expense.amount / participants.length;
         
         for (var participant in participants) {

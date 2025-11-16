@@ -32,7 +32,7 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
     super.initState();
     _loadAvailableFriends();
     
-    // (Lógica de Edición - No implementada en este sprint, pero se mantiene la estructura)
+    // (Lógica de Edición)
     if (widget.isEditing && widget.expense != null) {
       _descriptionController.text = widget.expense!.description;
       _amountController.text = widget.expense!.amount.toString();
