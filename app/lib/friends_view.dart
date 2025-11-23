@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:isar/isar.dart'; // <--- 1. IMPORT AÑADIDO PARA 'Id'
+import 'package:isar/isar.dart';
 import 'models.dart';
 import 'repositories.dart';
 import 'friend_details_view.dart';
@@ -71,7 +71,6 @@ class FriendsViewState extends State<FriendsView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          // <--- 2. CORRECCIÓN: Envuelto en SnackBar()
           SnackBar(content: Text(AppLocalizations.of(context)!.friendDeleted)), 
         ).closed.then((_) {
            loadFriends();
@@ -103,7 +102,8 @@ class FriendsViewState extends State<FriendsView> {
         foregroundColor: Colors.black,
         child: const Icon(Icons.add),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      // CAMBIO AQUÍ: Se cambió de 'endTop' a 'endFloat' para bajar el botón a la esquina inferior derecha
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: _friendsList.isEmpty
           ? Center(child: Text(l10n.noFriends))
           : ListView.builder(

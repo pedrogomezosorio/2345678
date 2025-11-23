@@ -1,3 +1,4 @@
+import 'package:isar/isar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
@@ -57,7 +58,7 @@ class ExpensesViewState extends State<ExpensesView> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          Text(AppLocalizations.of(context)!.expenseDeleted),
+          SnackBar(content: Text(AppLocalizations.of(context)!.expenseDeleted)),
         ).closed.then((_) {
            MainTabView.friendsKey.currentState?.loadFriends();
         });
@@ -97,7 +98,8 @@ class ExpensesViewState extends State<ExpensesView> {
         foregroundColor: Colors.black,
         child: const Icon(Icons.add),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
+      // CAMBIO AQUÍ: Se cambió de 'endTop' a 'endFloat' para bajar el botón
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: _expensesList.isEmpty
           ? Center(child: Text(l10n.noExpenses))
           : ListView.builder(
@@ -128,7 +130,6 @@ class ExpensesViewState extends State<ExpensesView> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                // CORREGIDO: Usar l10n.currencySymbol
                                 '${expense.description} - ${expense.amount.toStringAsFixed(2)}${l10n.currencySymbol}',
                                 style: const TextStyle(fontSize: 18.0),
                               ),
