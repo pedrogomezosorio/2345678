@@ -70,3 +70,16 @@ class SplitWithMeAPIService implements SplitWithMeService {
     }
   }
 }
+
+
+
+// SIN JSON — ya no usamos API ni HTTP.
+// Puedes eliminar completamente este archivo si no usas API externa.
+
+class ServerException implements Exception {
+  final String msg;
+  ServerException(this.msg);
+
+  @override
+  String toString() => msg;
+}

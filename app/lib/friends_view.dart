@@ -1,295 +1,150 @@
+// lib/friends_view.dart
+
 import 'package:flutter/material.dart';
-import 'package:splitwithfriends/utils/command.dart';
-import 'friends_viewmodel.dart';
+import 'package:provider/provider.dart';
+import 'package:isar/isar.dart'; // Importar el tipo Id
 import 'models.dart';
+import 'repositories.dart';
+import 'friend_details_view.dart'; 
+import 'friend_form_dialog.dart'; 
+import 'main.dart'; 
 
-class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({
-    super.key,
-    required this.title,
-    required this.viewModel,
-  });
-
-  final String title;
-  final FriendViewModel viewModel;
+class FriendsView extends StatefulWidget {
+  const FriendsView({super.key});
 
   @override
-  State<FriendsScreen> createState() => _FriendsScreenState();
+  State<FriendsView> createState() => FriendsViewState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> {
+class FriendsViewState extends State<FriendsView> {
+  List<Friend> _friendsList = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadFriends(); 
+  }
+
+  Future<void> loadFriends() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    final repo = Provider.of<FriendRepository>(context, listen: false);
+    
+    _friendsList = await repo.getAllFriends();
+
+    if (_friendsList.isEmpty) {
+      final initialFriends = [
+        Friend(name: 'Friend 1'),
+        Friend(name: 'Friend 2'),
+      ];
+      for (var friend in initialFriends) {
+        await repo.saveFriend(friend);
+      }
+      _friendsList = await repo.getAllFriends();
+    }
+    
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+  }
+
+  void _showAddFriendDialog() async {
+    final bool? didAddFriend = await showDialog(
+      context: context,
+      builder: (context) => const FriendFormDialog(),
+    );
+    
+    if (didAddFriend == true) {
+      loadFriends();
+      MainTabView.expensesKey.currentState?.loadExpenses();
+    }
+  }
+
+  Future<void> _deleteFriend(Id friendId) async {
+    if (!mounted) return;
+    final repo = Provider.of<FriendRepository>(context, listen: false);
+    
+    await repo.deleteFriend(friendId);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Amigo eliminado')),
+    );
+    
+    MainTabView.expensesKey.currentState?.loadExpenses();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator()); 
+    }
+    
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddFriendDialog, 
+        mini: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        child: const Icon(Icons.add), 
       ),
-      body: ListenableBuilder(
-        listenable: Listenable.merge([
-          widget.viewModel,
-          widget.viewModel.load,
-          widget.viewModel.addFriend,
-          widget.viewModel.removeFriend,
-        ]),
-        builder: (context, child) {
-          return Stack(
-            children: [
-              if (widget.viewModel.load.running ||
-                  widget.viewModel.addFriend.running ||
-                  widget.viewModel.removeFriend.running)
-                Center(child: CircularProgressIndicator()),
+      // ¡LÍNEA ELIMINADA! Ya no está 'floatingActionButtonLocation: FloatingActionButtonLocation.endTop'
+      
+      body: _friendsList.isEmpty
+          ? const Center(child: Text('No hay amigos (A1: Sin datos)'))
+          : ListView.builder(
+              padding: const EdgeInsets.only(top: 8.0),
+              itemCount: _friendsList.length,
+              itemBuilder: (context, index) {
+                final friend = _friendsList[index];
+                final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
+                
+                return Dismissible(
+                  key: Key(friend.isarId.toString()), 
+                  direction: DismissDirection.endToStart, 
+                  
+                  onDismissed: (direction) {
+                    _deleteFriend(friend.isarId); // Llama al borrado
+                    
+                    setState(() {
+                      _friendsList.removeAt(index);
+                    });
+                  },
 
-              widget.viewModel.friends.isEmpty
-                  ? Center(child: Text("No friends"))
-                  : CustomScrollView(
-                      slivers: [
-                        if (widget.viewModel.load.error ||
-                            widget.viewModel.addFriend.error ||
-                            widget.viewModel.removeFriend.error)
-                          SliverToBoxAdapter(
-                            child: InfoBar(
-                              message: widget.viewModel.errorMessage!,
-                              onPressed: widget.viewModel.load.error
-                                  ? widget.viewModel.load.clearResult
-                                  : widget.viewModel.addFriend.error
-                                  ? widget.viewModel.addFriend.clearResult
-                                  : widget.viewModel.removeFriend.clearResult,
-                              isError: true,
-                            ),
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
+                            style: const TextStyle(fontSize: 25.0),
                           ),
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            return FriendRow(
-                              friend: widget.viewModel.friends[index],
-                              onRemove: widget.viewModel.removeFriend,
-                            );
-                          }, childCount: widget.viewModel.friends.length),
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 200)),
+                        
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FriendDetailsView(friend: friend),
+                              ),
+                            );
+                          },
+                          child: const Text('SHOW ALL'),
+                        ),
                       ],
                     ),
-            ],
-          );
-        },
-      ),
-
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => showDialog(
-          context: context,
-          builder: (context) => FriendDialog(viewModel: widget.viewModel),
-        ),
-        tooltip: 'Add friend',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
-}
-
-class FriendRow extends StatelessWidget {
-  const FriendRow({super.key, required this.friend, required this.onRemove});
-
-  final Friend friend;
-  final Command1 onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Row(
-        key: ValueKey("friend-${friend.id}"),
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: CircleAvatar(child: Text(friend.name.substring(0, 1))),
-          ),
-          Expanded(
-            child: InkWell(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FriendDetailsScreen(friend: friend),
-                ),
-              ),
-              child: Text(friend.name),
+                  ),
+                );
+              },
             ),
-          ),
-          IconButton(
-            onPressed: () => onRemove.execute(friend.id),
-            icon: Icon(
-              Icons.delete,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class InfoBar extends StatelessWidget {
-  const InfoBar({
-    super.key,
-    required this.message,
-    required this.onPressed,
-    this.isError = false,
-  });
-
-  final String message;
-  final Function onPressed;
-  final bool isError;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: isError
-          ? Theme.of(context).colorScheme.errorContainer
-          : Theme.of(context).colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              message,
-              style: TextStyle(
-                color: isError
-                    ? Theme.of(context).colorScheme.onErrorContainer
-                    : Theme.of(context).colorScheme.onSecondaryContainer,
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () => onPressed(),
-              style: ButtonStyle(
-                foregroundColor: WidgetStatePropertyAll(
-                  isError
-                      ? Theme.of(context).colorScheme.error
-                      : Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-              child: Text("Dismiss"),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class FriendDialog extends StatefulWidget {
-  const FriendDialog({super.key, required this.viewModel});
-
-  final FriendViewModel viewModel;
-
-  @override
-  State<StatefulWidget> createState() => _FriendDialogState();
-}
-
-class _FriendDialogState extends State<FriendDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
-
-  @override
-  void dispose() {
-    // Clean up the controller when the widget is disposed.
-    nameController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text("Add new friend"),
-      content: Form(
-        key: _formKey,
-        child: TextFormField(
-          decoration: const InputDecoration(
-            icon: Icon(Icons.person),
-            labelText: "Name",
-          ),
-          controller: nameController,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return "Please enter a name";
-            }
-            return null;
-          },
-        ),
-      ),
-      actions: [
-        ElevatedButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context);
-              widget.viewModel.addFriend.execute(nameController.text);
-            }
-          },
-          child: const Text("Add"),
-        ),
-      ],
-    );
-  }
-}
-
-class FriendDetailsScreen extends StatelessWidget {
-  const FriendDetailsScreen({super.key, required this.friend});
-
-  final Friend friend;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Friend details"),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          elevation: 10,
-          color: Theme.of(context).colorScheme.onPrimary,
-          shadowColor: Colors.black,
-
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(leading: Icon(Icons.person), title: Text(friend.name)),
-                ListTile(
-                  leading: Icon(Icons.credit_score, color: Colors.green),
-                  title: Text(friend.creditBalance!.toStringAsFixed(2)),
-                ),
-                ListTile(
-                  leading: Icon(Icons.credit_card, color: Colors.red),
-                  title: Text(friend.debitBalance!.toStringAsFixed(2)),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      child: const Text("Action 1"),
-                      onPressed: () => (),
-                    ),
-                    TextButton(
-                      child: const Text("Action 2"),
-                      onPressed: () => (),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
