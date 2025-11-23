@@ -1,39 +1,31 @@
-// lib/main.dart
-
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
 import 'models.dart';
 import 'repositories.dart';
 import 'friends_view.dart';
 import 'expenses_view.dart';
 import 'settle_debt_dialog.dart';
-import 'responsive_helper.dart'; // ¡NUEVO! Importar el helper
-import 'tablet_layout.dart';     // ¡NUEVO! Importar el layout de tablet
 
 late Isar isarDB;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); 
-
+  WidgetsFlutterBinding.ensureInitialized();
   final dir = await getApplicationSupportDirectory();
-  
+
   isarDB = await Isar.open(
-    [FriendSchema, ExpenseSchema], 
+    [FriendSchema, ExpenseSchema],
     directory: dir.path,
   );
-
-  // --- CÓDIGO DE LIMPIEZA ---
-  // await isarDB.writeTxn(() async {
-  //   await isarDB.clear(); 
-  // });
-  // -------------------------
 
   runApp(
     MultiProvider(
       providers: [
-        Provider<Isar>(create: (_) => isarDB), 
+        Provider<Isar>(create: (_) => isarDB),
         Provider<FriendRepository>(create: (context) => FriendRepository(Isar.getInstance()!)),
         Provider<ExpenseRepository>(create: (context) => ExpenseRepository(Isar.getInstance()!)),
       ],
@@ -48,7 +40,17 @@ class SplitWithMeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SPLIT WITH ME',
+      onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'), // Inglés
+        Locale('es'), // Español
+      ],
       theme: ThemeData(
         primarySwatch: Colors.grey,
         appBarTheme: const AppBarTheme(
@@ -56,29 +58,17 @@ class SplitWithMeApp extends StatelessWidget {
           foregroundColor: Colors.black,
           elevation: 0,
           titleTextStyle: TextStyle(
-            color: Colors.black,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
+              color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
-      // ¡ACTUALIZADO!
-      // 'home' ahora usa el ResponsiveHelper para decidir
-      home: const ResponsiveHelper(
-        phoneLayout: MainTabView(),    // Layout para teléfonos
-        tabletLayout: TabletLayout(), // Layout para tablets
-      ),
+      home: const MainTabView(),
     );
   }
 }
 
-// --- MainTabView (Layout de Teléfono) ---
-// (Esta clase no cambia, pero es bueno verla en contexto)
 class MainTabView extends StatelessWidget {
   const MainTabView({super.key});
 
-  // Las Keys se quedan aquí para que ambas vistas (tablet y teléfono)
-  // puedan acceder a ellas de forma estática.
   static final friendsKey = GlobalKey<FriendsViewState>();
   static final expensesKey = GlobalKey<ExpensesViewState>();
 
@@ -87,6 +77,7 @@ class MainTabView extends StatelessWidget {
       context: context,
       builder: (_) => const SettleDebtDialog(),
     );
+
     if (didSettle == true) {
       friendsKey.currentState?.loadFriends();
       expensesKey.currentState?.loadExpenses();
@@ -95,15 +86,23 @@ class MainTabView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Usamos un valor por defecto seguro si las localizaciones aún no cargaron (raro, pero posible en init)
+    final l10n = AppLocalizations.of(context);
+    final title = l10n?.appTitle ?? 'Split With Me';
+    final tFriends = l10n?.friendsTab ?? 'Friends';
+    final tExpenses = l10n?.expensesTab ?? 'Expenses';
+    final tSettle = l10n?.btnSettle ?? 'Settle';
+    final tRefresh = l10n?.btnRefresh ?? 'Refresh';
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('SPLIT WITH ME'),
-          bottom: const TabBar(
+          title: Text(title),
+          bottom: TabBar(
             tabs: [
-              Tab(text: 'FRIENDS'), 
-              Tab(text: 'EXPENSES'),
+              Tab(text: tFriends),
+              Tab(text: tExpenses),
             ],
           ),
         ),
@@ -119,7 +118,7 @@ class MainTabView extends StatelessWidget {
             children: [
               TextButton(
                 onPressed: () => _showSettleDebtDialog(context),
-                child: const Text('LIQUIDAR DEUDA'),
+                child: Text(tSettle),
               ),
               const SizedBox(width: 8),
               TextButton(
@@ -127,10 +126,10 @@ class MainTabView extends StatelessWidget {
                   friendsKey.currentState?.loadFriends();
                   expensesKey.currentState?.loadExpenses();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Refrescando datos...')),
+                    const SnackBar(content: Text('Refreshing...')),
                   );
                 },
-                child: const Text('REFRESH'),
+                child: Text(tRefresh),
               ),
             ],
           ),

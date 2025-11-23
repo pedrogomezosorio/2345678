@@ -1,13 +1,12 @@
-// lib/friends_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:isar/isar.dart'; // Importar el tipo Id
+import 'package:isar/isar.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'models.dart';
 import 'repositories.dart';
-import 'friend_details_view.dart'; 
-import 'friend_form_dialog.dart'; 
-import 'main.dart'; 
+import 'friend_details_view.dart';
+import 'friend_form_dialog.dart';
+import 'main.dart';
 
 class FriendsView extends StatefulWidget {
   const FriendsView({super.key});
@@ -23,27 +22,23 @@ class FriendsViewState extends State<FriendsView> {
   @override
   void initState() {
     super.initState();
-    loadFriends(); 
+    loadFriends();
   }
 
   Future<void> loadFriends() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
     final repo = Provider.of<FriendRepository>(context, listen: false);
-    
+
     _friendsList = await repo.getAllFriends();
 
+    // Si está vacía, creamos un par de ejemplo
     if (_friendsList.isEmpty) {
-      final initialFriends = [
-        Friend(name: 'Friend 1'),
-        Friend(name: 'Friend 2'),
-      ];
-      for (var friend in initialFriends) {
-        await repo.saveFriend(friend);
-      }
+      await repo.saveFriend(Friend(name: 'Friend 1'));
+      await repo.saveFriend(Friend(name: 'Friend 2'));
       _friendsList = await repo.getAllFriends();
     }
-    
+
     if (!mounted) return;
     setState(() => _isLoading = false);
   }
@@ -53,7 +48,7 @@ class FriendsViewState extends State<FriendsView> {
       context: context,
       builder: (context) => const FriendFormDialog(),
     );
-    
+
     if (didAddFriend == true) {
       loadFriends();
       MainTabView.expensesKey.currentState?.loadExpenses();
@@ -63,88 +58,84 @@ class FriendsViewState extends State<FriendsView> {
   Future<void> _deleteFriend(Id friendId) async {
     if (!mounted) return;
     final repo = Provider.of<FriendRepository>(context, listen: false);
-    
     await repo.deleteFriend(friendId);
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Amigo eliminado')),
+      SnackBar(content: Text(AppLocalizations.of(context)!.friendDeleted)),
     );
-    
+
     MainTabView.expensesKey.currentState?.loadExpenses();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator()); 
+      return const Center(child: CircularProgressIndicator());
     }
-    
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddFriendDialog, 
+        onPressed: _showAddFriendDialog,
         mini: true,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
-        child: const Icon(Icons.add), 
+        child: const Icon(Icons.add),
       ),
-      // ¡LÍNEA ELIMINADA! Ya no está 'floatingActionButtonLocation: FloatingActionButtonLocation.endTop'
-      
+
       body: _friendsList.isEmpty
-          ? const Center(child: Text('No hay amigos (A1: Sin datos)'))
+          ? Center(child: Text(l10n.noFriends))
           : ListView.builder(
-              padding: const EdgeInsets.only(top: 8.0),
-              itemCount: _friendsList.length,
-              itemBuilder: (context, index) {
-                final friend = _friendsList[index];
-                final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
-                
-                return Dismissible(
-                  key: Key(friend.isarId.toString()), 
-                  direction: DismissDirection.endToStart, 
-                  
-                  onDismissed: (direction) {
-                    _deleteFriend(friend.isarId); // Llama al borrado
-                    
-                    setState(() {
-                      _friendsList.removeAt(index);
-                    });
-                  },
+        padding: const EdgeInsets.only(top: 8.0),
+        itemCount: _friendsList.length,
+        itemBuilder: (context, index) {
+          final friend = _friendsList[index];
+          final netBalance = friend.totalCreditBalance - friend.totalDebitBalance;
 
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${friend.name} - \$${netBalance.toStringAsFixed(2)}',
-                            style: const TextStyle(fontSize: 25.0),
-                          ),
-                        ),
-                        
-                        OutlinedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => FriendDetailsView(friend: friend),
-                              ),
-                            );
-                          },
-                          child: const Text('SHOW ALL'),
-                        ),
-                      ],
+          return Dismissible(
+            key: Key(friend.isarId.toString()), // Clave corregida
+            direction: DismissDirection.endToStart,
+            background: Container(
+              color: Colors.red,
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: const Icon(Icons.delete, color: Colors.white),
+            ),
+            onDismissed: (direction) {
+              _deleteFriend(friend.isarId);
+              setState(() {
+                _friendsList.removeAt(index);
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${friend.name} - ${l10n.currencySymbol}${netBalance.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 18.0),
                     ),
                   ),
-                );
-              },
+                  OutlinedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => FriendDetailsView(friend: friend),
+                        ),
+                      );
+                    },
+                    child: Text(l10n.showAll),
+                  ),
+                ],
+              ),
             ),
+          );
+        },
+      ),
     );
   }
 }

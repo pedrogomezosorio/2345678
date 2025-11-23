@@ -1,0 +1,13 @@
+{
+  "appTitle": "SPLIT WITH ME",
+  "friendsTab": "AMIGOS",
+  "expensesTab": "GASTOS",
+  "btnSettle": "LIQUIDAR DEUDA",
+  "btnRefresh": "ACTUALIZAR",
+  "showAll": "VER DETALLES",
+  "noFriends": "No hay amigos aún",
+  "friendDeleted": "Amigo eliminado",
+  "currencySymbol": "€",
+  "noExpenses": "No hay gastos (A1: Sin datos)",
+  "expenseDeleted": "Gasto eliminado (UC-04)"
+}

@@ -1,0 +1,13 @@
+{
+  "appTitle": "SPLIT WITH ME",
+  "friendsTab": "FRIENDS",
+  "expensesTab": "EXPENSES",
+  "btnSettle": "SETTLE DEBT",
+  "btnRefresh": "REFRESH",
+  "showAll": "SHOW ALL",
+  "noFriends": "No friends yet",
+  "friendDeleted": "Friend deleted",
+  "currencySymbol": "$",
+  "noExpenses": "No expenses yet",
+  "expenseDeleted": "Expense deleted"
+}
