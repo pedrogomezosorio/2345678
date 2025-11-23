@@ -22,13 +22,18 @@ const FriendSchema = CollectionSchema(
       name: r'name',
       type: IsarType.string,
     ),
-    r'totalCreditBalance': PropertySchema(
+    r'netBalance': PropertySchema(
       id: 1,
+      name: r'netBalance',
+      type: IsarType.double,
+    ),
+    r'totalCreditBalance': PropertySchema(
+      id: 2,
       name: r'totalCreditBalance',
       type: IsarType.double,
     ),
     r'totalDebitBalance': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'totalDebitBalance',
       type: IsarType.double,
     )
@@ -64,8 +69,9 @@ void _friendSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.name);
-  writer.writeDouble(offsets[1], object.totalCreditBalance);
-  writer.writeDouble(offsets[2], object.totalDebitBalance);
+  writer.writeDouble(offsets[1], object.netBalance);
+  writer.writeDouble(offsets[2], object.totalCreditBalance);
+  writer.writeDouble(offsets[3], object.totalDebitBalance);
 }
 
 Friend _friendDeserialize(
@@ -76,8 +82,8 @@ Friend _friendDeserialize(
 ) {
   final object = Friend(
     name: reader.readString(offsets[0]),
-    totalCreditBalance: reader.readDoubleOrNull(offsets[1]) ?? 0.0,
-    totalDebitBalance: reader.readDoubleOrNull(offsets[2]) ?? 0.0,
+    totalCreditBalance: reader.readDoubleOrNull(offsets[2]) ?? 0.0,
+    totalDebitBalance: reader.readDoubleOrNull(offsets[3]) ?? 0.0,
   );
   object.isarId = id;
   return object;
@@ -93,8 +99,10 @@ P _friendDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
+      return (reader.readDouble(offset)) as P;
     case 2:
+      return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
+    case 3:
       return (reader.readDoubleOrNull(offset) ?? 0.0) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -370,6 +378,68 @@ extension FriendQueryFilter on QueryBuilder<Friend, Friend, QFilterCondition> {
     });
   }
 
+  QueryBuilder<Friend, Friend, QAfterFilterCondition> netBalanceEqualTo(
+    double value, {
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'netBalance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Friend, Friend, QAfterFilterCondition> netBalanceGreaterThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'netBalance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Friend, Friend, QAfterFilterCondition> netBalanceLessThan(
+    double value, {
+    bool include = false,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'netBalance',
+        value: value,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
+  QueryBuilder<Friend, Friend, QAfterFilterCondition> netBalanceBetween(
+    double lower,
+    double upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    double epsilon = Query.epsilon,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'netBalance',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        epsilon: epsilon,
+      ));
+    });
+  }
+
   QueryBuilder<Friend, Friend, QAfterFilterCondition> totalCreditBalanceEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -515,6 +585,18 @@ extension FriendQuerySortBy on QueryBuilder<Friend, Friend, QSortBy> {
     });
   }
 
+  QueryBuilder<Friend, Friend, QAfterSortBy> sortByNetBalance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'netBalance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Friend, Friend, QAfterSortBy> sortByNetBalanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'netBalance', Sort.desc);
+    });
+  }
+
   QueryBuilder<Friend, Friend, QAfterSortBy> sortByTotalCreditBalance() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'totalCreditBalance', Sort.asc);
@@ -565,6 +647,18 @@ extension FriendQuerySortThenBy on QueryBuilder<Friend, Friend, QSortThenBy> {
     });
   }
 
+  QueryBuilder<Friend, Friend, QAfterSortBy> thenByNetBalance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'netBalance', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Friend, Friend, QAfterSortBy> thenByNetBalanceDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'netBalance', Sort.desc);
+    });
+  }
+
   QueryBuilder<Friend, Friend, QAfterSortBy> thenByTotalCreditBalance() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'totalCreditBalance', Sort.asc);
@@ -598,6 +692,12 @@ extension FriendQueryWhereDistinct on QueryBuilder<Friend, Friend, QDistinct> {
     });
   }
 
+  QueryBuilder<Friend, Friend, QDistinct> distinctByNetBalance() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'netBalance');
+    });
+  }
+
   QueryBuilder<Friend, Friend, QDistinct> distinctByTotalCreditBalance() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'totalCreditBalance');
@@ -621,6 +721,12 @@ extension FriendQueryProperty on QueryBuilder<Friend, Friend, QQueryProperty> {
   QueryBuilder<Friend, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<Friend, double, QQueryOperations> netBalanceProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'netBalance');
     });
   }
 

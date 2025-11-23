@@ -40,4 +40,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get expenseDeleted => 'Expense deleted';
+
+  @override
+  String get dialogSettleTitle => 'Settle Debt';
+
+  @override
+  String get labelPayer => 'Who pays';
+
+  @override
+  String get labelReceiver => 'Who receives';
+
+  @override
+  String get labelAmount => 'Amount';
+
+  @override
+  String get btnCancel => 'Cancel';
+
+  @override
+  String get btnAdd => 'Add';
+
+  @override
+  String get btnLiquidar => 'Settle';
+
+  @override
+  String get dialogAddFriendTitle => 'Add Friend';
+
+  @override
+  String get hintFriendName => 'Friend\'s name';
+
+  @override
+  String get titleCreateExpense => 'CREATE EXPENSE';
+
+  @override
+  String get titleEditExpense => 'EDIT EXPENSE';
+
+  @override
+  String get labelDescription => 'Description';
+
+  @override
+  String get labelDate => 'Date';
+
+  @override
+  String get labelPaidBy => 'Paid by';
+
+  @override
+  String get labelParticipants => 'Participants';
+
+  @override
+  String get btnConfirm => 'CONFIRM';
+
+  @override
+  String get msgSelectPayer => 'Select payer';
+
+  @override
+  String headerBalance(Object name) {
+    return '$name\'s General Balance';
+  }
+
+  @override
+  String get labelNetBalance => 'Net Balance';
+
+  @override
+  String get labelCredit => 'Total Credit';
+
+  @override
+  String get labelDebit => 'Total Debit';
+
+  @override
+  String get headerExpensesList => 'Expenses participated in';
+
+  @override
+  String get msgNoExpensesFriend => 'This friend has no expenses.';
+
+  @override
+  String get msgDebtSettled => 'Debt settled';
 }

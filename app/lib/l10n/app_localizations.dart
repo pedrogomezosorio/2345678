@@ -163,6 +163,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Expense deleted'**
   String get expenseDeleted;
+
+  /// No description provided for @dialogSettleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle Debt'**
+  String get dialogSettleTitle;
+
+  /// No description provided for @labelPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Who pays'**
+  String get labelPayer;
+
+  /// No description provided for @labelReceiver.
+  ///
+  /// In en, this message translates to:
+  /// **'Who receives'**
+  String get labelReceiver;
+
+  /// No description provided for @labelAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get labelAmount;
+
+  /// No description provided for @btnCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get btnCancel;
+
+  /// No description provided for @btnAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get btnAdd;
+
+  /// No description provided for @btnLiquidar.
+  ///
+  /// In en, this message translates to:
+  /// **'Settle'**
+  String get btnLiquidar;
+
+  /// No description provided for @dialogAddFriendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Friend'**
+  String get dialogAddFriendTitle;
+
+  /// No description provided for @hintFriendName.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend\'s name'**
+  String get hintFriendName;
+
+  /// No description provided for @titleCreateExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'CREATE EXPENSE'**
+  String get titleCreateExpense;
+
+  /// No description provided for @titleEditExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'EDIT EXPENSE'**
+  String get titleEditExpense;
+
+  /// No description provided for @labelDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get labelDescription;
+
+  /// No description provided for @labelDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get labelDate;
+
+  /// No description provided for @labelPaidBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by'**
+  String get labelPaidBy;
+
+  /// No description provided for @labelParticipants.
+  ///
+  /// In en, this message translates to:
+  /// **'Participants'**
+  String get labelParticipants;
+
+  /// No description provided for @btnConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'CONFIRM'**
+  String get btnConfirm;
+
+  /// No description provided for @msgSelectPayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Select payer'**
+  String get msgSelectPayer;
+
+  /// No description provided for @headerBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s General Balance'**
+  String headerBalance(Object name);
+
+  /// No description provided for @labelNetBalance.
+  ///
+  /// In en, this message translates to:
+  /// **'Net Balance'**
+  String get labelNetBalance;
+
+  /// No description provided for @labelCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Credit'**
+  String get labelCredit;
+
+  /// No description provided for @labelDebit.
+  ///
+  /// In en, this message translates to:
+  /// **'Total Debit'**
+  String get labelDebit;
+
+  /// No description provided for @headerExpensesList.
+  ///
+  /// In en, this message translates to:
+  /// **'Expenses participated in'**
+  String get headerExpensesList;
+
+  /// No description provided for @msgNoExpensesFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'This friend has no expenses.'**
+  String get msgNoExpensesFriend;
+
+  /// No description provided for @msgDebtSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'Debt settled'**
+  String get msgDebtSettled;
 }
 
 class _AppLocalizationsDelegate

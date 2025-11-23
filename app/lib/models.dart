@@ -1,47 +1,36 @@
-// lib/models.dart
-
 import 'package:isar/isar.dart';
 
-// El archivo que será generado automáticamente.
-part 'models.g.dart'; 
+part 'models.g.dart';
 
-// --- 1. COLECCIÓN DE AMIGOS (FRIEND) ---
 @collection
 class Friend {
-  // Isar ID (Primary Key)
   Id isarId = Isar.autoIncrement;
 
-  // Campos de Friend
-  final String name; 
-  double totalCreditBalance; // ¡CAMBIO! De 'final' a 'mutable' para poder actualizarlo
-  double totalDebitBalance;  // ¡CAMBIO! De 'final' a 'mutable' para poder actualizarlo
+  final String name;
+  
+  double totalCreditBalance; 
+  double totalDebitBalance;  
 
-  // Constructor
   Friend({
     required this.name, 
     this.totalCreditBalance = 0.0, 
     this.totalDebitBalance = 0.0,
   });
+
+  double get netBalance => totalCreditBalance - totalDebitBalance;
 }
 
-// --- 2. COLECCIÓN DE GASTOS (EXPENSE) ---
 @collection
 class Expense {
-  // Isar ID (Primary Key)
   Id isarId = Isar.autoIncrement;
 
-  // Campos de Expense (UC-01)
-  final String description; 
-  final DateTime date;      
-  final double amount;      
+  String description; 
+  DateTime date;      
+  double amount;      
   
-  // ¡NUEVO! RELACIÓN: Quién pagó este gasto
-  final payer = IsarLink<Friend>(); 
-
-  // RELACIÓN: Amigos que participan en este gasto
+  final payer = IsarLink<Friend>();
   final participants = IsarLinks<Friend>(); 
 
-  // Constructor
   Expense({
     required this.description,
     required this.date,

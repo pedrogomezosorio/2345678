@@ -1,59 +1,42 @@
-// lib/friend_form_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'models.dart';
 import 'repositories.dart';
+import 'models.dart';
+import 'l10n/app_localizations.dart';
 
 class FriendFormDialog extends StatefulWidget {
   const FriendFormDialog({super.key});
-
   @override
   State<FriendFormDialog> createState() => _FriendFormDialogState();
 }
 
 class _FriendFormDialogState extends State<FriendFormDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-
-  void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      final repo = Provider.of<FriendRepository>(context, listen: false);
-      final newFriend = Friend(name: _nameController.text);
-      await repo.saveFriend(newFriend);
-      
-      // Cerramos el diálogo y devolvemos 'true' para indicar éxito
-      if (mounted) {
-        Navigator.pop(context, true); 
-      }
-    }
-  }
+  final _controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return AlertDialog(
-      title: const Text('Añadir Amigo'),
-      content: Form(
-        key: _formKey,
-        child: TextFormField(
-          controller: _nameController,
-          decoration: const InputDecoration(labelText: 'Nombre del amigo'),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'El nombre no puede estar vacío';
-            }
-            return null;
-          },
-        ),
+      title: Text(l10n.dialogAddFriendTitle), // "Añadir Amigo"
+      content: TextField(
+        controller: _controller,
+        decoration: InputDecoration(hintText: l10n.hintFriendName),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context, false), // Devuelve 'false'
-          child: const Text('CANCELAR'),
+          onPressed: () => Navigator.pop(context),
+          child: Text(l10n.btnCancel),
         ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: const Text('AÑADIR'),
+        TextButton(
+          onPressed: () {
+            if (_controller.text.isNotEmpty) {
+              final repo = Provider.of<FriendRepository>(context, listen: false);
+              repo.saveFriend(Friend(name: _controller.text));
+              Navigator.pop(context, true);
+            }
+          },
+          child: Text(l10n.btnAdd),
         ),
       ],
     );

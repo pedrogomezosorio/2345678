@@ -1,9 +1,9 @@
-// lib/expense_form_view.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'repositories.dart';
+import 'package:isar/isar.dart';
+import 'l10n/app_localizations.dart';
 
 class ExpenseFormView extends StatefulWidget {
   final bool isEditing;
@@ -23,28 +23,45 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
   
   List<Friend> _availableFriends = [];
   final List<Friend> _participants = []; 
-  Friend? _selectedPayer; // ¡NUEVO! Para saber quién pagó
+  Friend? _selectedPayer; 
   
   bool _isLoadingFriends = true;
+
+  late Isar _isar;
+  late FriendRepository _friendRepo;
+  late ExpenseRepository _expenseRepo;
 
   @override
   void initState() {
     super.initState();
+    _isar = Provider.of<Isar>(context, listen: false);
+    _friendRepo = Provider.of<FriendRepository>(context, listen: false);
+    _expenseRepo = Provider.of<ExpenseRepository>(context, listen: false);
+    
     _loadAvailableFriends();
     
-    // (Lógica de Edición)
     if (widget.isEditing && widget.expense != null) {
-      _descriptionController.text = widget.expense!.description;
-      _amountController.text = widget.expense!.amount.toString();
-      _selectedDate = widget.expense!.date;
-      _participants.addAll(widget.expense!.participants.toList());
-      _selectedPayer = widget.expense!.payer.value;
+      final expense = widget.expense!;
+      _descriptionController.text = expense.description;
+      _amountController.text = expense.amount.toString();
+      _selectedDate = expense.date;
+      
+      expense.participants.loadSync();
+      expense.payer.loadSync();
+      
+      _participants.addAll(expense.participants);
+      _selectedPayer = expense.payer.value;
     }
   }
 
   Future<void> _loadAvailableFriends() async {
-    final repo = Provider.of<FriendRepository>(context, listen: false);
-    _availableFriends = await repo.getAllFriends();
+    _availableFriends = await _friendRepo.getAllFriends();
+    if (widget.isEditing && _selectedPayer != null) {
+      _selectedPayer = _availableFriends.firstWhere(
+        (f) => f.isarId == _selectedPayer!.isarId,
+        orElse: () => _selectedPayer!,
+      );
+    }
     setState(() => _isLoadingFriends = false);
   }
 
@@ -62,160 +79,179 @@ class _ExpenseFormViewState extends State<ExpenseFormView> {
     }
   }
 
-  // ¡ACTUALIZADO! Lógica de guardado
-  void _saveExpense() async {
-    if (_formKey.currentState!.validate()) {
-      // Validaciones adicionales
-      if (_selectedPayer == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Debes seleccionar quién pagó el gasto')),
-        );
-        return;
-      }
-      if (_participants.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error: Debes seleccionar al menos un participante')),
-        );
-        return;
-      }
+  Future<void> _saveExpense() async {
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
 
-      _formKey.currentState!.save();
-      
-      final repo = Provider.of<ExpenseRepository>(context, listen: false);
-      final double amount = double.tryParse(_amountController.text) ?? 0.0;
-      
-      // Usamos el gasto existente (si editamos) o creamos uno nuevo
-      final newExpense = widget.expense ?? Expense(
-        description: _descriptionController.text,
-        date: _selectedDate,
-        amount: amount,
-      );
-      
-      // Asignamos el pagador y los participantes
-      newExpense.payer.value = _selectedPayer;
-      newExpense.participants.clear();
-      newExpense.participants.addAll(_participants);
-      
-      // El repositorio (actualizado) ahora maneja los balances
-      await repo.saveExpense(newExpense);
+    final double amount = double.tryParse(_amountController.text) ?? 0.0;
 
-      final action = widget.isEditing ? 'Modificado' : 'Creado';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gasto $action (UC-02/03) exitosamente')),
-      );
-      Navigator.pop(context, true); // Retorna 'true' para indicar éxito
+    if (_selectedPayer == null || _participants.isEmpty) {
+      return; 
     }
+    
+    await _isar.writeTxn(() async {
+      Expense expenseToSave;
+      
+      if (widget.isEditing && widget.expense != null) {
+        expenseToSave = widget.expense!;
+        // Revertir lógica anterior (Simplificado para el ejemplo)
+        await expenseToSave.payer.load();
+        await expenseToSave.participants.load();
+        
+        final oldPayer = expenseToSave.payer.value;
+        final oldParticipants = expenseToSave.participants.toList();
+        final oldAmount = expenseToSave.amount;
+        
+        if (oldPayer != null && oldParticipants.isNotEmpty) {
+          final oldAmountPerParticipant = oldAmount / oldParticipants.length;
+          oldPayer.totalCreditBalance -= oldAmount;
+          await _friendRepo.saveFriend(oldPayer);
+          for (var p in oldParticipants) {
+            p.totalDebitBalance -= oldAmountPerParticipant;
+            await _friendRepo.saveFriend(p);
+          }
+        }
+      } else {
+        expenseToSave = Expense(
+          description: _descriptionController.text,
+          date: _selectedDate,
+          amount: amount,
+        );
+      }
+
+      expenseToSave.description = _descriptionController.text;
+      expenseToSave.date = _selectedDate;
+      expenseToSave.amount = amount;
+      expenseToSave.payer.value = _selectedPayer;
+      expenseToSave.participants.clear();
+      expenseToSave.participants.addAll(_participants);
+
+      final double amountPerParticipant = amount / _participants.length;
+
+      final payer = await _friendRepo.getFriendById(_selectedPayer!.isarId);
+      if (payer != null) {
+        payer.totalCreditBalance += amount;
+        await _friendRepo.saveFriend(payer);
+      }
+
+      for (var participant in _participants) {
+        final pFriend = await _friendRepo.getFriendById(participant.isarId);
+        if (pFriend != null) {
+          pFriend.totalDebitBalance += amountPerParticipant;
+          await _friendRepo.saveFriend(pFriend);
+        }
+      }
+      
+      await _expenseRepo.saveExpense(expenseToSave);
+    });
+
+    if (mounted) Navigator.pop(context, true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final titleText = widget.isEditing ? 'MODIFICAR GASTO' : 'CREAR GASTO';
+    final l10n = AppLocalizations.of(context)!;
+    final titleText = widget.isEditing ? l10n.titleEditExpense : l10n.titleCreateExpense;
     
     return Scaffold(
       appBar: AppBar(title: Text(titleText)),
-      body: _isLoadingFriends
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              Text(l10n.labelDescription, style: Theme.of(context).textTheme.titleMedium),
+              TextFormField(
+                controller: _descriptionController,
+                validator: (value) => value!.isEmpty ? 'Error' : null,
+              ),
+              const SizedBox(height: 20),
+
+              Text(l10n.labelDate, style: Theme.of(context).textTheme.titleMedium),
+              Row(
                 children: [
-                  // --- Description ---
-                  Text('Description', style: Theme.of(context).textTheme.titleMedium),
-                  TextFormField(
-                    controller: _descriptionController,
-                    validator: (value) => value!.isEmpty ? 'La descripción no puede estar vacía' : null,
+                  Expanded(
+                    child: Text(
+                      '${_selectedDate.year} / ${_selectedDate.month.toString().padLeft(2, '0')} / ${_selectedDate.day.toString().padLeft(2, '0')}', 
+                      style: const TextStyle(fontSize: 16.0)
+                    )
                   ),
-                  const SizedBox(height: 20),
-
-                  // --- Fecha ---
-                  Text('Fecha', style: Theme.of(context).textTheme.titleMedium),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '${_selectedDate.year}/${_selectedDate.month.toString().padLeft(2, '0')}/${_selectedDate.day.toString().padLeft(2, '0')}', 
-                          style: const TextStyle(fontSize: 16.0)
-                        )
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.calendar_today, color: Colors.grey),
-                        onPressed: () => _selectDate(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // --- Monto ---
-                  Text('Monto', style: Theme.of(context).textTheme.titleMedium),
-                  TextFormField(
-                    controller: _amountController,
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      final amount = double.tryParse(value ?? '');
-                      if (amount == null || amount <= 0) return 'Ingrese un monto válido (> 0)';
-                      return null;
-                    },
-                    decoration: const InputDecoration(suffixText: '\$'),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // --- ¡NUEVO! Quién pagó ---
-                  Text('Pagado por:', style: Theme.of(context).textTheme.titleMedium),
-                  DropdownButtonFormField<Friend>(
-                    value: _selectedPayer,
-                    hint: const Text('Selecciona quién pagó...'),
-                    items: _availableFriends.map((friend) {
-                      return DropdownMenuItem(
-                        value: friend,
-                        child: Text(friend.name),
-                      );
-                    }).toList(),
-                    onChanged: (Friend? newValue) {
-                      setState(() {
-                        _selectedPayer = newValue;
-                      });
-                    },
-                    validator: (value) => value == null ? 'Debes seleccionar un pagador' : null,
-                  ),
-                  const SizedBox(height: 20),
-
-
-                  // --- Participantes ---
-                  Text('Participantes (Dividido entre):', style: Theme.of(context).textTheme.titleMedium),
-                  ..._availableFriends.map((friend) {
-                    return CheckboxListTile(
-                      title: Text(friend.name),
-                      value: _participants.any((p) => p.isarId == friend.isarId),
-                      onChanged: (bool? isChecked) {
-                        setState(() {
-                          if (isChecked == true) {
-                            _participants.add(friend);
-                          } else {
-                            _participants.removeWhere((p) => p.isarId == friend.isarId);
-                          }
-                        });
-                      },
-                      dense: true,
-                    );
-                  }).toList(),
-                  const SizedBox(height: 40),
-
-                  // --- Botón CONFIRMAR ---
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _saveExpense,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                      ),
-                      child: const Text('CONFIRMAR', style: TextStyle(fontSize: 16)),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.calendar_today, color: Colors.grey),
+                    onPressed: () => _selectDate(context),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 20),
+
+              Text(l10n.labelAmount, style: Theme.of(context).textTheme.titleMedium),
+              TextFormField(
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  final amount = double.tryParse(value ?? '');
+                  if (amount == null || amount <= 0) return 'Error';
+                  return null;
+                },
+                decoration: InputDecoration(suffixText: l10n.currencySymbol),
+              ),
+              const SizedBox(height: 20),
+
+              Text('${l10n.labelPaidBy}:', style: Theme.of(context).textTheme.titleMedium),
+              if (_isLoadingFriends)
+                const CircularProgressIndicator()
+              else
+                DropdownButtonFormField<Friend>(
+                  value: _selectedPayer,
+                  hint: Text(l10n.msgSelectPayer),
+                  validator: (value) => value == null ? 'Error' : null,
+                  items: _availableFriends.map((friend) {
+                    return DropdownMenuItem(value: friend, child: Text(friend.name));
+                  }).toList(),
+                  onChanged: (Friend? newValue) {
+                    setState(() => _selectedPayer = newValue);
+                  },
+                ),
+              const SizedBox(height: 20),
+
+              Text('${l10n.labelParticipants}:', style: Theme.of(context).textTheme.titleMedium),
+              if (_isLoadingFriends)
+                const Center(child: CircularProgressIndicator())
+              else
+                ..._availableFriends.map((friend) {
+                  return CheckboxListTile(
+                    title: Text(friend.name),
+                    value: _participants.any((p) => p.isarId == friend.isarId),
+                    onChanged: (bool? isChecked) {
+                      setState(() {
+                        if (isChecked == true) {
+                          _participants.add(friend);
+                        } else {
+                          _participants.removeWhere((p) => p.isarId == friend.isarId);
+                        }
+                      });
+                    },
+                    dense: true,
+                  );
+                }).toList(),
+              const SizedBox(height: 40),
+
+              Center(
+                child: ElevatedButton(
+                  onPressed: _saveExpense,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                  child: Text(l10n.btnConfirm, style: const TextStyle(fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

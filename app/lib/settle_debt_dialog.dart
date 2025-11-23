@@ -1,10 +1,9 @@
-// lib/settle_debt_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'models.dart';
 import 'repositories.dart';
+import 'l10n/app_localizations.dart'; // Importante
 
 class SettleDebtDialog extends StatefulWidget {
   const SettleDebtDialog({super.key});
@@ -39,26 +38,27 @@ class _SettleDebtDialogState extends State<SettleDebtDialog> {
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
       if (_payer == null || _receiver == null) return;
-
       final double amount = double.tryParse(_amountController.text) ?? 0.0;
       final repo = Provider.of<FriendRepository>(context, listen: false);
 
-      // Llamamos a la nueva lógica del repositorio
       await repo.settleDebt(_payer!, _receiver!, amount);
 
       if (mounted) {
+        // Mensaje traducido
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Deuda de \$${amount.toStringAsFixed(2)} liquidada')),
+          SnackBar(content: Text('${AppLocalizations.of(context)!.msgDebtSettled}: \$${amount.toStringAsFixed(2)}')),
         );
-        Navigator.pop(context, true); // Devolvemos 'true' para refrescar
+        Navigator.pop(context, true);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return AlertDialog(
-      title: const Text('Liquidar Deuda'),
+      title: Text(l10n.dialogSettleTitle), // "Liquidar Deuda"
       content: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Form(
@@ -66,64 +66,36 @@ class _SettleDebtDialogState extends State<SettleDebtDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // --- Quién PAGA ---
                   DropdownButtonFormField<Friend>(
                     value: _payer,
-                    hint: const Text('Quién paga...'),
+                    hint: Text('${l10n.labelPayer}...'),
                     items: _allFriends.map((friend) {
-                      return DropdownMenuItem(
-                        value: friend,
-                        child: Text(friend.name),
-                      );
+                      return DropdownMenuItem(value: friend, child: Text(friend.name));
                     }).toList(),
-                    onChanged: (Friend? newValue) {
-                      setState(() => _payer = newValue);
-                    },
-                    validator: (value) {
-                      if (value == null) return 'Selecciona un pagador';
-                      if (value == _receiver) return 'No puede ser la misma persona';
-                      return null;
-                    },
+                    onChanged: (val) => setState(() => _payer = val),
+                    validator: (val) => val == null ? l10n.msgSelectPayer : null,
                   ),
                   const SizedBox(height: 16),
-                  
-                  // --- Quién RECIBE ---
                   DropdownButtonFormField<Friend>(
                     value: _receiver,
-                    hint: const Text('Quién recibe...'),
+                    hint: Text('${l10n.labelReceiver}...'),
                     items: _allFriends.map((friend) {
-                      return DropdownMenuItem(
-                        value: friend,
-                        child: Text(friend.name),
-                      );
+                      return DropdownMenuItem(value: friend, child: Text(friend.name));
                     }).toList(),
-                    onChanged: (Friend? newValue) {
-                      setState(() => _receiver = newValue);
-                    },
-                    validator: (value) {
-                      if (value == null) return 'Selecciona un receptor';
-                      if (value == _payer) return 'No puede ser la misma persona';
-                      return null;
-                    },
+                    onChanged: (val) => setState(() => _receiver = val),
+                    validator: (val) => val == null ? l10n.msgSelectPayer : null,
                   ),
                   const SizedBox(height: 16),
-                  
-                  // --- Monto ---
                   TextFormField(
                     controller: _amountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Monto',
-                      suffixText: '\$',
+                    decoration: InputDecoration(
+                      labelText: l10n.labelAmount,
+                      suffixText: l10n.currencySymbol,
                     ),
                     keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                    ],
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}'))],
                     validator: (value) {
-                      final amount = double.tryParse(value ?? '');
-                      if (amount == null || amount <= 0) {
-                        return 'Ingrese un monto válido';
-                      }
+                      if (value == null || double.tryParse(value) == null) return 'Error';
                       return null;
                     },
                   ),
@@ -133,11 +105,11 @@ class _SettleDebtDialogState extends State<SettleDebtDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('CANCELAR'),
+          child: Text(l10n.btnCancel),
         ),
         ElevatedButton(
           onPressed: _submit,
-          child: const Text('LIQUIDAR'),
+          child: Text(l10n.btnLiquidar),
         ),
       ],
     );
