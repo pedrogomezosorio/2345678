@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:isar/isar.dart';
-//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'l10n/app_localizations.dart';
-
 import 'models.dart';
 import 'repositories.dart';
 import 'expense_form_view.dart';
 import 'expense_details_view.dart';
 import 'main.dart';
-import 'friends_view.dart';
+import 'l10n/app_localizations.dart';
 
 class ExpensesView extends StatefulWidget {
   const ExpensesView({super.key});
@@ -25,6 +21,7 @@ class ExpensesViewState extends State<ExpensesView> {
   @override
   void initState() {
     super.initState();
+    // Cargar después del build para tener contexto seguro
     WidgetsBinding.instance.addPostFrameCallback((_) {
       loadExpenses();
     });
@@ -34,42 +31,44 @@ class ExpensesViewState extends State<ExpensesView> {
     if (!mounted) return;
     setState(() => _isLoading = true);
 
-    final repo = Provider.of<ExpenseRepository>(context, listen: false);
-    _expensesList = await repo.getAllExpenses();
-
-    if (_expensesList.isEmpty) {
-      final friendRepo = Provider.of<FriendRepository>(context, listen: false);
-      final allFriends = await friendRepo.getAllFriends();
-
-      if (allFriends.length >= 2) {
-        final exampleExpense = Expense(
-          description: 'Gasto de Ejemplo',
-          date: DateTime.now(),
-          amount: 50.00,
+    try {
+      final repo = Provider.of<ExpenseRepository>(context, listen: false);
+      _expensesList = await repo.getAllExpenses();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al cargar gastos')),
         );
-        exampleExpense.payer.value = allFriends[0];
-        exampleExpense.participants.addAll([allFriends[0], allFriends[1]]);
-
-        await repo.saveExpense(exampleExpense);
-        _expensesList = await repo.getAllExpenses();
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
   }
 
   Future<void> _deleteExpense(Id expenseId) async {
     if (!mounted) return;
-    final repo = Provider.of<ExpenseRepository>(context, listen: false);
-    await repo.deleteExpense(expenseId);
+    try {
+      final repo = Provider.of<ExpenseRepository>(context, listen: false);
+      await repo.deleteExpense(expenseId);
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context)!.expenseDeleted)),
-    );
+      setState(() {
+        _expensesList.removeWhere((e) => e.isarId == expenseId);
+      });
 
-    MainTabView.friendsKey.currentState?.loadFriends();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          Text(AppLocalizations.of(context)!.expenseDeleted),
+        ).closed.then((_) {
+           MainTabView.friendsKey.currentState?.loadFriends();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error al eliminar gasto')),
+        );
+      }
+    }
   }
 
   @override
@@ -82,11 +81,10 @@ class ExpensesViewState extends State<ExpensesView> {
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        // AQUÍ FALTABA EL ONPRESSED, YA ESTÁ AÑADIDO:
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ExpenseFormView(isEditing: false),
+            builder: (context) => const ExpenseFormView(isEditing: false),
           ),
         ).then((didSave) {
           if (didSave == true) {
@@ -99,57 +97,65 @@ class ExpensesViewState extends State<ExpensesView> {
         foregroundColor: Colors.black,
         child: const Icon(Icons.add),
       ),
-
+      floatingActionButtonLocation: FloatingActionButtonLocation.endTop,
       body: _expensesList.isEmpty
           ? Center(child: Text(l10n.noExpenses))
           : ListView.builder(
-        padding: const EdgeInsets.only(top: 8.0),
-        itemCount: _expensesList.length,
-        itemBuilder: (context, index) {
-          final expense = _expensesList[index];
+              padding: const EdgeInsets.only(top: 8.0),
+              itemCount: _expensesList.length,
+              itemBuilder: (context, index) {
+                final expense = _expensesList[index];
+                final payerName = expense.payer.value?.name ?? 'N/A';
 
-          return Dismissible(
-            key: Key(expense.isarId.toString()), // AQUÍ FALTABA LA KEY
-            direction: DismissDirection.endToStart,
-            onDismissed: (direction) {
-              _deleteExpense(expense.isarId);
-              setState(() {
-                _expensesList.removeAt(index);
-              });
-            },
-            background: Container(
-              color: Colors.red,
-              alignment: Alignment.centerRight,
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: const Icon(Icons.delete, color: Colors.white),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${expense.description} - ${l10n.currencySymbol}${expense.amount.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 18.0),
+                return Dismissible(
+                  key: Key(expense.isarId.toString()),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (direction) {
+                    _deleteExpense(expense.isarId);
+                  },
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                    child: const Icon(Icons.delete, color: Colors.white),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                // CORREGIDO: Usar l10n.currencySymbol
+                                '${expense.description} - ${expense.amount.toStringAsFixed(2)}${l10n.currencySymbol}',
+                                style: const TextStyle(fontSize: 18.0),
+                              ),
+                              Text(
+                                '${l10n.labelPaidBy}: $payerName',
+                                style: const TextStyle(fontSize: 14.0, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ExpenseDetailsView(expense: expense),
+                              ),
+                            );
+                          },
+                          child: Text(l10n.showAll),
+                        ),
+                      ],
                     ),
                   ),
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ExpenseDetailsView(expense: expense),
-                        ),
-                      );
-                    },
-                    child: Text(l10n.showAll),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 }
